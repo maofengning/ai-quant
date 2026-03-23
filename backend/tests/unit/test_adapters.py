@@ -1,5 +1,6 @@
 """Tests for data adapters."""
-from datetime import date
+import pandas as pd
+from datetime import date, datetime
 from app.adapters.base import DataAdapter
 from app.models.domain import Bar
 
@@ -52,3 +53,43 @@ class TestDataAdapter:
         assert isinstance(symbols, list)
         assert len(symbols) > 0
         assert all(isinstance(s, str) for s in symbols)
+
+
+class TestAKShareAdapter:
+    """Test AKShare adapter."""
+
+    def test_fetch_bars_converts_akshare_data(self, monkeypatch):
+        """Test converting AKShare DataFrame to Bar objects."""
+        # Mock akshare API response
+        mock_df = pd.DataFrame({
+            '日期': ['2024-01-01', '2024-01-02'],
+            '开盘': [10.0, 10.5],
+            '收盘': [10.5, 11.0],
+            '最高': [10.8, 11.2],
+            '最低': [9.8, 10.3],
+            '成交量': [1000000, 1200000]
+        })
+
+        def mock_stock_zh_a_hist(*args, **kwargs):
+            return mock_df
+
+        monkeypatch.setattr("akshare.stock_zh_a_hist", mock_stock_zh_a_hist)
+
+        from app.adapters.akshare_adapter import AKShareAdapter
+        adapter = AKShareAdapter()
+        bars = adapter.fetch_bars("000001", date(2024, 1, 1), date(2024, 1, 2))
+
+        assert len(bars) == 2
+        assert bars[0].symbol == "000001.SZ"
+        assert bars[0].close == 10.5
+        assert bars[1].close == 11.0
+
+    def test_get_symbols_returns_a_share_list(self):
+        """Test getting A-share symbol list (stub)."""
+        from app.adapters.akshare_adapter import AKShareAdapter
+        adapter = AKShareAdapter()
+        symbols = adapter.get_symbols()
+
+        # Stub implementation returns empty list
+        assert isinstance(symbols, list)
+        assert len(symbols) == 0  # Stub returns empty list
