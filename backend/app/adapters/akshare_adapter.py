@@ -31,11 +31,15 @@ class AKShareAdapter(DataAdapter):
             timeframe: Only "1d" supported currently
 
         Returns:
-            List of Bar objects
+            List of Bar objects sorted by datetime (ascending)
 
         Raises:
-            DataError: If data fetching fails
+            ValueError: If timeframe is not supported
+            DataError: If data fetching or parsing fails
         """
+        # Validate timeframe
+        if timeframe != "1d":
+            raise ValueError(f"Unsupported timeframe: {timeframe}. Only '1d' is currently supported.")
         try:
             # Fetch data from akshare
             df = ak.stock_zh_a_hist(
@@ -51,12 +55,21 @@ class AKShareAdapter(DataAdapter):
         if df is None or df.empty:
             raise DataError(f"No data returned for symbol {symbol}")
 
+        # Validate required columns
+        required_columns = ['日期', '开盘', '最高', '最低', '收盘', '成交量']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise DataError(f"Missing required columns in akshare data: {missing_columns}")
+
+        # Detect exchange: stocks starting with 6 are Shanghai (SH), others are Shenzhen (SZ)
+        exchange = "SH" if symbol.startswith("6") else "SZ"
+
         # Convert to Bar objects
         bars = []
         try:
             for _, row in df.iterrows():
                 bar = Bar(
-                    symbol=f"{symbol}.SZ",  # Add exchange suffix
+                    symbol=f"{symbol}.{exchange}",  # Add exchange suffix (SH/SZ)
                     datetime=datetime.strptime(row['日期'], '%Y-%m-%d'),
                     open=float(row['开盘']),
                     high=float(row['最高']),
@@ -68,7 +81,8 @@ class AKShareAdapter(DataAdapter):
         except (KeyError, ValueError) as e:
             raise DataError(f"Failed to parse akshare data: {e}")
 
-        return bars
+        # Sort by datetime as required by base class contract
+        return sorted(bars, key=lambda b: b.datetime)
 
     def get_symbols(self) -> list[str]:
         """

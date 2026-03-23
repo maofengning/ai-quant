@@ -37,6 +37,7 @@ class DataAdapter(ABC):
             ValueError: If symbol is invalid or timeframe is not supported
             ConnectionError: If network/API connection fails
             TimeoutError: If request times out
+            Exception: Subclasses may raise custom exceptions (e.g., DataError) for data fetching/parsing failures
         """
         pass
 
