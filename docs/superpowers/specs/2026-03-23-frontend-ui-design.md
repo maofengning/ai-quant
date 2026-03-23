@@ -411,3 +411,489 @@ import 'monaco-editor/esm/vs/basic-languages/python/python.contribution'
 - [ ] 回测结果展示图表和指标
 - [ ] 参数优化流程完整
 - [ ] 响应式布局在移动端可用
+
+---
+
+## 9. TypeScript 接口定义
+
+### 9.1 Strategy Store
+
+```typescript
+// stores/strategy.ts
+import { defineStore } from 'pinia'
+import type { Strategy } from '@/types/api'
+
+interface StrategyState {
+  strategies: Strategy[]
+  currentStrategy: Strategy | null
+  isLoading: boolean
+  error: string | null
+}
+
+export const useStrategyStore = defineStore('strategy', {
+  state: (): StrategyState => ({
+    strategies: [],
+    currentStrategy: null,
+    isLoading: false,
+    error: null
+  }),
+
+  actions: {
+    async fetchStrategies(): Promise<void>
+    async fetchStrategy(id: string): Promise<Strategy>
+    async createStrategy(data: { name: string; code: string; description?: string }): Promise<Strategy>
+    async updateStrategy(id: string, data: Partial<Strategy>): Promise<Strategy>
+    async deleteStrategy(id: string): Promise<void>
+    setCurrentStrategy(strategy: Strategy | null): void
+  }
+})
+```
+
+### 9.2 组件 Props 定义
+
+```typescript
+// components/charts/EquityCurve.vue
+interface EquityPoint {
+  date: string
+  equity: number
+}
+
+interface Props {
+  data: EquityPoint[]
+  baseline?: EquityPoint[]        // 可选基准线
+  height?: string                 // 图表高度，默认 '400px'
+}
+
+// components/charts/DrawdownChart.vue
+interface Props {
+  equityCurve: number[]           // 权益数组
+  dates: string[]                 // 对应日期
+  height?: string
+}
+
+// components/charts/MonthlyReturns.vue
+interface MonthlyReturn {
+  year: number
+  month: number
+  return: number
+}
+
+interface Props {
+  data: MonthlyReturn[]
+  height?: string
+}
+
+// components/editor/CodeEditor.vue
+interface Props {
+  modelValue: string              // 代码内容
+  language?: 'python' | 'javascript'
+  readonly?: boolean
+  height?: string
+}
+
+interface Emits {
+  'update:modelValue': [value: string]
+  'validate': [isValid: boolean, errors: string[]]
+}
+
+// views/StrategyEditor.vue
+interface Props {
+  strategyId?: string             // 编辑模式时传入
+}
+
+// views/BacktestResult.vue
+interface Props {
+  backtestId: string
+}
+```
+
+---
+
+## 10. 状态与错误处理
+
+### 10.1 加载状态
+
+所有页面组件需处理以下状态：
+
+```typescript
+// 页面级状态
+const isLoading = ref(false)
+const error = ref<string | null>(null)
+
+// 空状态判断
+const isEmpty = computed(() => data.value.length === 0)
+```
+
+### 10.2 空状态设计
+
+| 组件 | 空状态提示 |
+|-----|-----------|
+| StrategyList | "暂无策略，点击右上角新建" |
+| Dashboard 最近回测 | "暂无回测记录" |
+| BacktestResult 交易记录 | "本次回测无交易记录" |
+
+### 10.3 错误处理
+
+```typescript
+// composables/useAsync.ts - 通用异步处理
+export function useAsync<T>(asyncFn: () => Promise<T>) {
+  const data = ref<T | null>(null)
+  const isLoading = ref(false)
+  const error = ref<Error | null>(null)
+
+  async function execute() {
+    isLoading.value = true
+    error.value = null
+    try {
+      data.value = await asyncFn()
+    } catch (e) {
+      error.value = e as Error
+      ElMessage.error(error.value.message)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  return { data, isLoading, error, execute }
+}
+```
+
+---
+
+## 11. API 扩展
+
+### 11.1 回测历史列表
+
+```typescript
+// api/backtest.ts 新增
+export interface BacktestHistoryItem {
+  backtest_id: string
+  strategy_name: string
+  status: 'running' | 'completed' | 'failed'
+  total_return: number
+  sharpe_ratio: number
+  max_drawdown: number
+  created_at: string
+}
+
+export const backtestApi = {
+  // 已有
+  run: (request: BacktestRequest) => Promise<BacktestRunResponse>,
+  getResult: (id: string) => Promise<BacktestResult>,
+  getStatus: (id: string) => Promise<BacktestStatusResponse>,
+
+  // 新增
+  list: (params?: { limit?: number; offset?: number }) => Promise<{
+    items: BacktestHistoryItem[]
+    total: number
+  }>
+}
+```
+
+### 11.2 仪表盘统计
+
+```typescript
+// api/dashboard.ts 新增
+export interface DashboardStats {
+  strategy_count: number
+  running_count: number
+  return_30d: number
+  avg_sharpe: number
+}
+
+export const dashboardApi = {
+  getStats: () => Promise<DashboardStats>
+}
+```
+
+### 11.3 月度收益数据结构
+
+```typescript
+// types/api.ts 扩展
+export interface MonthlyReturn {
+  year: number
+  month: number      // 1-12
+  return: number     // 月度收益率
+}
+
+// BacktestResult 新增字段
+export interface BacktestResult {
+  // ... 已有字段
+  monthly_returns: MonthlyReturn[]  // 新增
+}
+```
+
+---
+
+## 12. 组件交互流程
+
+### 12.1 策略编辑流程
+
+```
+StrategyList
+    │
+    ├─ 点击 [新建] ──────────────► /strategies/new
+    │                               │
+    │                               ▼
+    │                          StrategyEditor (新建模式)
+    │                               │
+    │                               ├─ 保存 → 返回列表
+    │                               └─ 回测 → 跳转 BacktestConfig (预选策略)
+    │
+    └─ 点击 [编辑] ──────────────► /strategies/:id/edit
+                                    │
+                                    ▼
+                               StrategyEditor (编辑模式)
+                                    │
+                                    ├─ 通过 route.params.id 获取策略
+                                    └─ 保存后更新列表
+```
+
+### 12.2 回测流程
+
+```
+BacktestConfig
+    │
+    ├─ 选择策略 (从 strategyStore.strategies)
+    ├─ 配置参数
+    └─ 提交 ──► backtestStore.runBacktest()
+                    │
+                    ▼
+              /backtest/:id  (BacktestResult)
+                    │
+                    ├─ 轮询状态 (status === 'running')
+                    │     └─ 每 2 秒调用 getStatus()
+                    │
+                    └─ 加载结果 (status === 'completed')
+                          └─ getResult() 获取完整数据
+```
+
+### 12.3 参数优化流程
+
+```
+Optimizer
+    │
+    ├─ 选择策略
+    ├─ 配置参数范围 (动态添加)
+    ├─ 提交 ──► optimizeApi.start()
+    │
+    └─ 监听进度
+          │
+          ├─ WebSocket 连接 (ws://host/ws/optimize/:id)
+          │     └─ 接收 { type: 'progress', trial: 60, total: 100, best: {...} }
+          │
+          └─ 完成后展示结果表格
+                └─ [应用最优参数] → 更新策略代码
+```
+
+---
+
+## 13. WebSocket 实时通信
+
+### 13.1 连接管理
+
+```typescript
+// composables/useWebSocket.ts
+export function useWebSocket() {
+  const ws = ref<WebSocket | null>(null)
+  const isConnected = ref(false)
+  const lastMessage = ref<any>(null)
+
+  function connect(url: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ws.value = new WebSocket(url)
+
+      ws.value.onopen = () => {
+        isConnected.value = true
+        resolve()
+      }
+
+      ws.value.onerror = (error) => {
+        reject(error)
+      }
+
+      ws.value.onmessage = (event) => {
+        lastMessage.value = JSON.parse(event.data)
+      }
+    })
+  }
+
+  function disconnect(): void {
+    ws.value?.close()
+    ws.value = null
+    isConnected.value = false
+  }
+
+  function onMessage(handler: (data: any) => void): void {
+    // 注册消息处理器
+  }
+
+  onUnmounted(() => disconnect())
+
+  return { connect, disconnect, isConnected, lastMessage, onMessage }
+}
+```
+
+### 13.2 消息类型
+
+```typescript
+// 优化进度消息
+interface OptimizationProgressMessage {
+  type: 'progress'
+  trial: number
+  total: number
+  best_value: number
+  best_params: Record<string, number>
+}
+
+// 回测进度消息
+interface BacktestProgressMessage {
+  type: 'progress'
+  current: number
+  total: number
+  message: string
+}
+```
+
+### 13.3 降级策略
+
+WebSocket 不可用时，使用 HTTP 轮询：
+
+```typescript
+// composables/usePolling.ts
+export function usePolling<T>(
+  fetchFn: () => Promise<T>,
+  interval: number = 2000,
+  condition: (data: T) => boolean = () => true
+) {
+  const data = ref<T | null>(null)
+  const isPolling = ref(false)
+
+  async function start() {
+    isPolling.value = true
+    while (isPolling.value) {
+      data.value = await fetchFn()
+      if (!condition(data.value)) break
+      await new Promise(r => setTimeout(r, interval))
+    }
+  }
+
+  function stop() {
+    isPolling.value = false
+  }
+
+  return { data, isPolling, start, stop }
+}
+```
+
+---
+
+## 14. Monaco Editor 配置
+
+### 14.1 Vite 集成
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+export default defineConfig({
+  plugins: [vue()],
+  worker: {
+    format: 'es'
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          monaco: ['monaco-editor']
+        }
+      }
+    }
+  }
+})
+```
+
+### 14.2 Worker 配置
+
+```typescript
+// components/editor/CodeEditor.vue
+import * as monaco from 'monaco-editor'
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import python from 'monaco-editor/esm/vs/basic-languages/python/python?worker'
+
+// 配置 Worker
+self.MonacoEnvironment = {
+  getWorker() {
+    return new editorWorker()
+  }
+}
+
+// Python 语法支持
+monaco.languages.register({ id: 'python' })
+```
+
+### 14.3 默认策略模板
+
+```python
+# 默认模板
+class MyStrategy(Strategy):
+    """策略描述"""
+
+    # 参数定义
+    fast_period = 10
+    slow_period = 30
+
+    def on_bar(self, bar: Bar, engine: Engine):
+        """每根K线触发"""
+        # 获取指标
+        fast_ma = engine.indicator('MA', period=self.fast_period)
+        slow_ma = engine.indicator('MA', period=self.slow_period)
+
+        # 交易逻辑
+        if fast_ma > slow_ma:
+            engine.submit_order(Order(side='buy', symbol=bar.symbol, quantity=100))
+        elif fast_ma < slow_ma:
+            engine.submit_order(Order(side='sell', symbol=bar.symbol, quantity=100))
+```
+
+---
+
+## 15. 实现顺序（更新）
+
+### Phase 0: 基础设施（0.5天）
+1. 扩展 types/api.ts（新增类型定义）
+2. 创建 api/dashboard.ts
+3. 扩展 api/backtest.ts（list 方法）
+
+### Phase 1: Store 完善（0.5天）
+1. strategy.ts store 完整实现
+2. backtest.ts store 扩展（历史记录）
+
+### Phase 2: Layout 组件（1天）
+1. AppLayout.vue
+2. Header.vue
+3. Sidebar.vue
+
+### Phase 3: 路由配置（0.5天）
+1. router/index.ts
+2. 路由守卫
+
+### Phase 4: 页面占位（0.5天）
+1. 所有页面空白占位
+
+### Phase 5: 页面实现（3天）
+1. Dashboard.vue
+2. StrategyList.vue + StrategyEditor.vue
+3. BacktestConfig.vue + BacktestResult.vue
+4. Optimizer.vue
+
+### Phase 6: 图表组件（2天）
+1. EquityCurve.vue
+2. DrawdownChart.vue
+3. MonthlyReturns.vue
+
+### Phase 7: 补充完善（1天）
+1. CodeEditor.vue
+2. composables（useWebSocket, usePolling）
+3. 整体测试
