@@ -107,6 +107,11 @@ class TestPosition:
 
         assert pnl == -2000.0
 
+    def test_position_invalid_zero_quantity(self):
+        """Test that position quantity cannot be zero."""
+        with pytest.raises(ValidationError, match="quantity cannot be zero"):
+            Position(symbol="TEST", quantity=0, avg_price=10.0)
+
 
 class TestPortfolio:
     """Test Portfolio model."""
@@ -143,3 +148,14 @@ class TestPortfolio:
         # BTC/USDT: 1 * 45000 = 45000
         # Total: 107000
         assert total == 107000.0
+
+    def test_portfolio_total_value_missing_price(self):
+        """Test total value falls back to avg_price when current price unavailable."""
+        portfolio = Portfolio(
+            cash=10000.0,
+            positions={"TEST": Position(symbol="TEST", quantity=100, avg_price=10.0)}
+        )
+        # Don't provide current price for TEST
+        total = portfolio.total_value({})
+        # Should use avg_price: 10000 + (100 * 10) = 11000
+        assert total == 11000.0

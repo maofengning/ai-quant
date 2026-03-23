@@ -36,11 +36,11 @@ class Bar(BaseModel):
 class Order(BaseModel):
     """Order instruction."""
 
-    symbol: str
-    side: Literal["buy", "sell"]
-    quantity: int = Field(..., gt=0)
-    price: float | None = None  # None for market orders
-    order_type: Literal["market", "limit"] = "market"
+    symbol: str = Field(..., description="Trading symbol")
+    side: Literal["buy", "sell"] = Field(..., description="Order side (buy/sell)")
+    quantity: int = Field(..., gt=0, description="Order quantity")
+    price: float | None = Field(None, description="Limit price (None for market orders)")
+    order_type: Literal["market", "limit"] = Field("market", description="Order type")
 
 
 class Position(BaseModel):
@@ -49,6 +49,14 @@ class Position(BaseModel):
     symbol: str
     quantity: int
     avg_price: float = Field(..., gt=0)
+
+    @field_validator("quantity")
+    @classmethod
+    def validate_quantity_nonzero(cls, v: int) -> int:
+        """Validate that quantity cannot be zero."""
+        if v == 0:
+            raise ValueError("quantity cannot be zero")
+        return v
 
     def calculate_pnl(self, current_price: float) -> float:
         """Calculate unrealized P&L."""
@@ -66,5 +74,6 @@ class Portfolio(BaseModel):
         position_value = sum(
             pos.quantity * current_prices.get(symbol, pos.avg_price)
             for symbol, pos in self.positions.items()
+            if pos.quantity != 0
         )
         return self.cash + position_value
