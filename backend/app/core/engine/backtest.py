@@ -15,7 +15,12 @@ class BacktestEngine(Engine):
         Args:
             initial_capital: Starting cash
             commission: Commission rate (e.g., 0.0003 = 0.03%)
+
+        Raises:
+            ValueError: If initial_capital is not positive
         """
+        if initial_capital <= 0:
+            raise ValueError("initial_capital must be positive")
         self.initial_capital = initial_capital
         self.commission = commission
         self.portfolio = Portfolio(cash=initial_capital)
@@ -96,3 +101,13 @@ class BacktestEngine(Engine):
     def get_portfolio(self) -> Portfolio:
         """Get current portfolio."""
         return self.portfolio
+
+    def set_current_price(self, symbol: str, price: float) -> None:
+        """
+        Set current market price for a symbol (for testing/simulation).
+
+        Args:
+            symbol: Stock symbol
+            price: Current price
+        """
+        self._current_prices[symbol] = price
