@@ -24,7 +24,7 @@ export const handlers = [
 
   // Create strategy
   http.post('/api/v1/strategies', async ({ request }) => {
-    const body = await request.json()
+    const body = await request.json() as any
     return HttpResponse.json({
       strategy_id: `strat_${Date.now()}`,
       ...body,
@@ -34,8 +34,7 @@ export const handlers = [
   }),
 
   // Run backtest
-  http.post('/api/v1/backtest/run', async ({ request }) => {
-    const body = await request.json()
+  http.post('/api/v1/backtest/run', async () => {
     return HttpResponse.json({
       backtest_id: `bt_${Date.now()}`,
       status: 'running'
@@ -43,7 +42,7 @@ export const handlers = [
   }),
 
   // Get backtest result
-  http.get('/api/v1/backtest/:id/result', ({ params }) => {
+  http.get('/api/v1/backtest/:id/result', () => {
     return HttpResponse.json(mockBacktestResult)
   }),
 
