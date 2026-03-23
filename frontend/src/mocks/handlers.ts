@@ -24,8 +24,7 @@ export const handlers = [
 
   // Create strategy
   http.post('/api/v1/strategies', async ({ request }) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Types will be added in Task 3
-    const body = await request.json() as any
+    const body = await request.json() as { name: string; code: string }
     return HttpResponse.json({
       strategy_id: `strat_${Date.now()}`,
       ...body,
