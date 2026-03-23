@@ -17,10 +17,3 @@ class BarsRequest(BaseModel):
     start_date: str
     end_date: str
     timeframe: str = "1d"
-
-
-class MarketType(str):
-    """Supported market types."""
-
-    CN_STOCK = "cn_stock"
-    CRYPTO = "crypto"

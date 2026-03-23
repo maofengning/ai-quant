@@ -27,5 +27,3 @@ async def get_symbols(
     elif market == "crypto":
         # TODO: Implement crypto adapter
         return SymbolsResponse(market=market, symbols=[])
-    else:
-        raise HTTPException(status_code=400, detail="Invalid market type")

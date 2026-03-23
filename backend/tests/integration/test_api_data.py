@@ -21,6 +21,15 @@ class TestDataAPI:
         assert "symbols" in data
         assert isinstance(data["symbols"], list)
 
+    def test_get_symbols_crypto_market(self, client):
+        """Test getting symbols for crypto market."""
+        response = client.get("/api/v1/data/symbols?market=crypto")
+        assert response.status_code == 200
+        data = response.json()
+        assert "symbols" in data
+        assert isinstance(data["symbols"], list)
+        assert data["market"] == "crypto"
+
     def test_get_symbols_invalid_market(self, client):
         """Test getting symbols with invalid market."""
         response = client.get("/api/v1/data/symbols?market=invalid")
