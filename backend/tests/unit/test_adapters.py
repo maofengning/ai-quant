@@ -7,7 +7,7 @@ from app.models.domain import Bar
 class MockAdapter(DataAdapter):
     """Mock adapter for testing."""
 
-    def fetch_bars(self, symbol: str, start: date, end: date, timeframe: str):
+    def fetch_bars(self, symbol: str, start: date, end: date, timeframe: str = "1d") -> list[Bar]:
         """Return mock bar data."""
         from datetime import datetime
         return [

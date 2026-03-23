@@ -30,7 +30,13 @@ class DataAdapter(ABC):
             timeframe: Bar timeframe (1d, 1h, etc.)
 
         Returns:
-            List of Bar objects sorted by datetime
+            List of Bar objects sorted by datetime (ascending order).
+            Implementations must ensure the returned list is sorted by datetime.
+
+        Raises:
+            ValueError: If symbol is invalid or timeframe is not supported
+            ConnectionError: If network/API connection fails
+            TimeoutError: If request times out
         """
         pass
 
