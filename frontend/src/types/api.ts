@@ -13,6 +13,12 @@ export interface BacktestRunResponse {
   status: 'running' | 'completed' | 'failed'
 }
 
+export interface BacktestStatusResponse {
+  backtest_id: string
+  status: 'running' | 'completed' | 'failed'
+  progress: number
+}
+
 export interface EquityPoint {
   date: string
   equity: number

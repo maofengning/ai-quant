@@ -2,7 +2,8 @@ import { apiClient } from './client'
 import type {
   BacktestRequest,
   BacktestRunResponse,
-  BacktestResult
+  BacktestResult,
+  BacktestStatusResponse
 } from '@/types/api'
 
 export const backtestApi = {
@@ -25,7 +26,7 @@ export const backtestApi = {
   /**
    * Get backtest status.
    */
-  async getStatus(backtestId: string) {
+  async getStatus(backtestId: string): Promise<BacktestStatusResponse> {
     const { data } = await apiClient.get(`/backtest/${backtestId}/status`)
     return data
   }

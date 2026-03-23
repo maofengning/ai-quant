@@ -35,4 +35,14 @@ describe('Backtest API', () => {
     expect(result.status).toBe('completed')
     expect(result.summary.total_return).toBeTypeOf('number')
   })
+
+  it('should fetch backtest status', async () => {
+    const backtestId = 'bt_test_001'
+
+    const status = await backtestApi.getStatus(backtestId)
+
+    expect(status.backtest_id).toBe(backtestId)
+    expect(status.status).toBe('completed')
+    expect(status.progress).toBe(100)
+  })
 })
