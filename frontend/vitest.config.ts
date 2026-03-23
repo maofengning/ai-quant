@@ -15,6 +15,13 @@ export default defineConfig({
       functions: 75,
       branches: 75,
       statements: 75,
+      exclude: [
+        'node_modules/',
+        'tests/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/mocks/**'
+      ],
     },
   },
   resolve: {

@@ -17,5 +17,5 @@ Object.defineProperty(window, 'matchMedia', {
 
 // Configure Vue Test Utils global settings
 config.global.stubs = {
-  // Add any global component stubs here if needed
+  teleport: true
 }
