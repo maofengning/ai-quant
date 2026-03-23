@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   plugins: [vue()],
@@ -10,11 +10,7 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      lines: 75,
-      functions: 75,
-      branches: 75,
-      statements: 75,
+      reporter: ['text', 'html', 'lcov'],
       exclude: [
         'node_modules/',
         'tests/',
@@ -22,11 +18,17 @@ export default defineConfig({
         '**/*.config.*',
         '**/mocks/**'
       ],
-    },
+      thresholds: {
+        lines: 75,
+        functions: 75,
+        branches: 75,
+        statements: 75
+      }
+    }
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  }
 })
