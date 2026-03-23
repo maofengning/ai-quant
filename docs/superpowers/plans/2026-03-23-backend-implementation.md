@@ -254,7 +254,7 @@ class TestBar:
                 symbol="TEST",
                 datetime=datetime(2024, 1, 1),
                 open=10.0,
-                high=9.0,  # Invalid: high < low
+                high=9.8,  # Invalid: high < low (9.8 < 10.0)
                 low=10.0,
                 close=10.0,
                 volume=1000
@@ -427,7 +427,7 @@ cd backend
 pytest tests/unit/test_domain.py::TestOrder -v
 ```
 
-Expected: All 3 tests PASS
+Expected: All 3 tests PASS (verify exact count: 3 passed)
 
 - [ ] **Step 7: Add tests for Position model**
 
@@ -927,14 +927,13 @@ class TestAKShareAdapter:
         assert bars[1].close == 11.0
 
     def test_get_symbols_returns_a_share_list(self):
-        """Test getting A-share symbol list."""
+        """Test getting A-share symbol list (stub)."""
         adapter = AKShareAdapter()
         symbols = adapter.get_symbols()
 
-        # Should return non-empty list
+        # Stub implementation returns empty list
         assert isinstance(symbols, list)
-        # For now, returns empty list (real implementation later)
-        assert len(symbols) >= 0
+        assert len(symbols) == 0  # Stub returns empty list
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -959,6 +958,11 @@ from app.adapters.base import DataAdapter
 from app.models.domain import Bar
 
 
+class DataError(Exception):
+    """Data adapter error."""
+    pass
+
+
 class AKShareAdapter(DataAdapter):
     """Adapter for AKShare A-share data source."""
 
@@ -980,29 +984,41 @@ class AKShareAdapter(DataAdapter):
 
         Returns:
             List of Bar objects
+
+        Raises:
+            DataError: If data fetching fails
         """
-        # Fetch data from akshare
-        df = ak.stock_zh_a_hist(
-            symbol=symbol,
-            period="daily",
-            start_date=start.strftime("%Y%m%d"),
-            end_date=end.strftime("%Y%m%d"),
-            adjust=""
-        )
+        try:
+            # Fetch data from akshare
+            df = ak.stock_zh_a_hist(
+                symbol=symbol,
+                period="daily",
+                start_date=start.strftime("%Y%m%d"),
+                end_date=end.strftime("%Y%m%d"),
+                adjust=""
+            )
+        except Exception as e:
+            raise DataError(f"Failed to fetch data from akshare: {e}")
+
+        if df is None or df.empty:
+            raise DataError(f"No data returned for symbol {symbol}")
 
         # Convert to Bar objects
         bars = []
-        for _, row in df.iterrows():
-            bar = Bar(
-                symbol=f"{symbol}.SZ",  # Add exchange suffix
-                datetime=datetime.strptime(row['日期'], '%Y-%m-%d'),
-                open=float(row['开盘']),
-                high=float(row['最高']),
-                low=float(row['最低']),
-                close=float(row['收盘']),
-                volume=int(row['成交量'])
-            )
-            bars.append(bar)
+        try:
+            for _, row in df.iterrows():
+                bar = Bar(
+                    symbol=f"{symbol}.SZ",  # Add exchange suffix
+                    datetime=datetime.strptime(row['日期'], '%Y-%m-%d'),
+                    open=float(row['开盘']),
+                    high=float(row['最高']),
+                    low=float(row['最低']),
+                    close=float(row['收盘']),
+                    volume=int(row['成交量'])
+                )
+                bars.append(bar)
+        except (KeyError, ValueError) as e:
+            raise DataError(f"Failed to parse akshare data: {e}")
 
         return bars
 
@@ -1011,9 +1027,11 @@ class AKShareAdapter(DataAdapter):
         Get list of A-share symbols.
 
         Returns:
-            List of stock codes (implementation stub)
+            Empty list (stub implementation)
+
+        Note:
+            This is a stub. Real implementation should use ak.stock_zh_a_spot_em()
         """
-        # TODO: Implement using ak.stock_zh_a_spot_em()
         return []
 ```
 
@@ -1478,10 +1496,13 @@ Expected: All 2 tests PASS
 
 ```bash
 cd backend
+# Start server in background and save PID
 uvicorn app.main:app --reload &
+UVICORN_PID=$!
 sleep 2
 curl http://127.0.0.1:8000/
-pkill -f uvicorn
+# Kill the specific process
+kill $UVICORN_PID
 ```
 
 Expected: JSON response with app name and version
@@ -1686,10 +1707,13 @@ Expected: All 2 tests PASS
 
 ```bash
 cd backend
+# Start server in background and save PID
 uvicorn app.main:app --reload &
+UVICORN_PID=$!
 sleep 2
 curl "http://127.0.0.1:8000/api/v1/data/symbols?market=cn_stock"
-pkill -f uvicorn
+# Kill the specific process
+kill $UVICORN_PID
 ```
 
 Expected: JSON response with symbols array
@@ -1704,6 +1728,56 @@ git commit -m "feat: add data API endpoints
 - Add API schemas with Pydantic
 - Register router in FastAPI app
 - 2 integration tests for data endpoints
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 9: Coverage Verification
+
+**Files:**
+- Run: Test coverage report
+
+- [ ] **Step 1: Run all tests with coverage**
+
+```bash
+cd backend
+pytest --cov=app --cov-report=term --cov-report=html
+```
+
+Expected: Coverage report showing ≥80% coverage
+
+- [ ] **Step 2: Review coverage gaps**
+
+```bash
+cd backend
+open htmlcov/index.html  # or use browser to view coverage/index.html
+```
+
+Expected: HTML coverage report opens showing file-by-file coverage
+
+- [ ] **Step 3: Verify coverage thresholds**
+
+Expected output should show:
+- app/models/domain.py: ≥ 90%
+- app/core/indicators/trend.py: ≥ 90%
+- app/adapters/: ≥ 85%
+- app/core/engine/: ≥ 90%
+- Overall coverage: ≥ 80%
+
+- [ ] **Step 4: Commit if coverage meets threshold**
+
+```bash
+git add .  # If any fixes were made
+git commit -m "test: verify test coverage meets 80% threshold
+
+Coverage report:
+- Domain models: XX%
+- Indicators: XX%
+- Adapters: XX%
+- Engine: XX%
+- Overall: XX%
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ```
