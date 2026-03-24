@@ -61,3 +61,39 @@ export interface Strategy {
 export interface StrategyListResponse {
   strategies: Strategy[]
 }
+
+export interface StrategyCreateRequest {
+  name: string
+  code: string
+  description?: string
+}
+
+export interface StrategyUpdateRequest {
+  name?: string
+  code?: string
+  description?: string
+}
+
+export interface MonthlyReturn {
+  year: number
+  month: number // 1-12
+  return: number // 月度收益率
+}
+
+export interface BacktestResult {
+  backtest_id: string
+  status: 'running' | 'completed' | 'failed'
+  summary: BacktestSummary
+  equity_curve: EquityPoint[]
+  trades: Trade[]
+  daily_returns: number[]
+  monthly_returns?: MonthlyReturn[]
+  config?: {
+    strategy_id: string
+    strategy_name: string
+    symbols: string[]
+    start_date: string
+    end_date: string
+    initial_capital: number
+  }
+}

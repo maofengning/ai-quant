@@ -15,6 +15,13 @@
         >
           保存
         </el-button>
+        <el-button
+          type="success"
+          :loading="running"
+          @click="handleSaveAndBacktest"
+        >
+          保存并回测
+        </el-button>
       </div>
     </div>
 
@@ -41,17 +48,14 @@
           label="策略代码"
           prop="code"
         >
-          <div class="editor-container">
+          <div class="editor-wrapper">
             <div class="editor-toolbar">
               <span class="toolbar-title">Python</span>
             </div>
-            <el-input
+            <CodeEditor
               v-model="form.code"
-              type="textarea"
-              :rows="20"
-              placeholder="请输入策略代码..."
-              class="code-editor"
-              font-family="monospace"
+              language="python"
+              height="500px"
             />
           </div>
           <div class="form-tip">
@@ -68,12 +72,15 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, FormInstance, FormRules } from 'element-plus'
 import { strategyApi } from '@/api/strategy'
+import { backtestApi } from '@/api/backtest'
+import CodeEditor from '@/components/editor/CodeEditor.vue'
 
 const route = useRoute()
 const router = useRouter()
 const formRef = ref<FormInstance>()
 
 const saving = ref(false)
+const running = ref(false)
 const loading = ref(false)
 
 const isEdit = computed(() => !!route.params.id)
@@ -134,6 +141,7 @@ const rules: FormRules = {
   ]
 }
 
+
 const fetchStrategy = async () => {
   if (!isEdit.value) return
 
@@ -180,6 +188,54 @@ const handleSave = async () => {
   })
 }
 
+const handleSaveAndBacktest = async () => {
+  if (!formRef.value) return
+
+  await formRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    saving.value = true
+    running.value = true
+    try {
+      let strategyIdValue = strategyId.value
+
+      // Save strategy first
+      if (isEdit.value) {
+        await strategyApi.update(strategyIdValue, {
+          name: form.name,
+          code: form.code
+        })
+        ElMessage.success('更新成功')
+      } else {
+        const result = await strategyApi.create({
+          name: form.name,
+          code: form.code
+        })
+        strategyIdValue = result.strategy_id
+        ElMessage.success('创建成功')
+      }
+      ElMessage.success('回测已启动')
+      const response = await backtestApi.run({
+        strategy_id: strategyIdValue,
+        symbols: ['000001.SZ'],
+        start_date: '2023-01-01',
+        end_date: '2024-01-01',
+        initial_capital: 100000,
+        commission: 0.0003,
+        slippage: 0.001
+      })
+
+      ElMessage.success('回测已启动')
+      router.push(`/backtest/${response.backtest_id}`)
+    } catch (error) {
+      ElMessage.error(isEdit.value ? '更新失败或回测启动失败' : '创建失败或回测启动失败')
+    } finally {
+      saving.value = false
+      running.value = false
+    }
+  })
+}
+
 onMounted(() => {
   fetchStrategy()
 })
@@ -209,7 +265,7 @@ onMounted(() => {
   gap: 12px;
 }
 
-.editor-container {
+.editor-wrapper {
   width: 100%;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
@@ -225,15 +281,6 @@ onMounted(() => {
 .toolbar-title {
   font-size: 12px;
   color: #909399;
-}
-
-.code-editor :deep(.el-textarea__inner) {
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 14px;
-  line-height: 1.6;
-  padding: 12px;
-  min-height: 400px;
-  resize: vertical;
 }
 
 .form-tip {

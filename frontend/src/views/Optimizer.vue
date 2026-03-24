@@ -192,8 +192,25 @@
           </div>
 
           <template v-else>
+            <!-- Progress -->
+            <div
+              v-if="optimizing"
+              class="optimize-progress"
+            >
+              <el-progress
+                :percentage="progress"
+                :status="progress === 100 ? 'success' : undefined"
+              />
+              <div class="progress-info">
+                正在优化... {{ currentTrial }}/{{ totalTrials }}
+              </div>
+            </div>
+
             <!-- Best Params -->
-            <div class="best-params">
+            <div
+              v-if="results.length > 0"
+              class="best-params"
+            >
               <el-alert
                 :title="`最佳参数: ${bestParams}`"
                 :description="`${objectiveLabel}: ${bestScore}`"
@@ -262,6 +279,20 @@
                 </template>
               </el-table-column>
             </el-table>
+            <div
+              v-if="results.length > 0"
+              class="result-actions"
+            >
+              <el-button
+                type="primary"
+                @click="handleApplyBestParams"
+              >
+                应用最优参数
+              </el-button>
+              <el-button @click="handleExportResults">
+                导出结果
+              </el-button>
+            </div>
           </template>
         </el-card>
       </el-col>
@@ -271,9 +302,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, FormInstance, FormRules } from 'element-plus'
 import { strategyApi } from '@/api/strategy'
 import type { Strategy } from '@/types/api'
+
+const router = useRouter()
 
 interface OptimizeParam {
   name: string
@@ -297,6 +331,9 @@ const loading = ref(false)
 const optimizing = ref(false)
 const strategies = ref<Strategy[]>([])
 const results = ref<OptimizeResult[]>([])
+const progress = ref(0)
+const currentTrial = ref(0)
+const totalTrials = ref(0)
 
 const availableSymbols = [
   '000001.SZ',
@@ -402,16 +439,12 @@ const handleOptimize = async () => {
 
     optimizing.value = true
     results.value = []
+    progress.value = 0
 
     try {
-      // Simulate optimization results
-      // In real implementation, this would call the optimize API
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      // Generate mock results
-      const mockResults: OptimizeResult[] = []
-      const param1Values = []
-      const param2Values = []
+      // Calculate total trials
+      const param1Values: number[] = []
+      const param2Values: number[] = []
 
       for (let p1 = form.params[0].start; p1 <= form.params[0].end; p1 += form.params[0].step) {
         param1Values.push(p1)
@@ -419,6 +452,12 @@ const handleOptimize = async () => {
       for (let p2 = form.params[1].start; p2 <= form.params[1].end; p2 += form.params[1].step) {
         param2Values.push(p2)
       }
+
+      totalTrials.value = param1Values.length * param2Values.length
+      let completedTrials = 0
+
+      // Generate mock results with progress
+      const mockResults: OptimizeResult[] = []
 
       for (const p1 of param1Values) {
         for (const p2 of param2Values) {
@@ -451,6 +490,14 @@ const handleOptimize = async () => {
             win_rate,
             score
           })
+
+          // Update progress
+          completedTrials++
+          currentTrial.value = completedTrials
+          progress.value = Math.round((completedTrials / totalTrials.value) * 100)
+
+          // Small delay for progress visualization
+          await new Promise(resolve => setTimeout(resolve, 50))
         }
       }
 
@@ -470,6 +517,46 @@ const handleOptimize = async () => {
 onMounted(() => {
   fetchStrategies()
 })
+
+const handleApplyBestParams = async () => {
+  if (!results.value.length) return
+
+  const best = results.value[0]
+  ElMessage.success(`最优参数: ${bestParams.value}`)
+  // In real implementation, this would update the strategy with best params
+  router.push({
+    path: '/strategies/new',
+    query: { params: JSON.stringify(best.params) }
+  })
+}
+
+const handleExportResults = () => {
+  if (!results.value.length) return
+
+  const csv = [
+    // Header
+    [...form.params.map(p => p.name), 'total_return', 'sharpe_ratio', 'max_drawdown', 'win_rate', 'score'].join(','),
+    // Data rows
+    ...results.value.map(r => [
+      ...form.params.map(p => r.params[p.name]),
+      r.total_return,
+      r.sharpe_ratio,
+      r.max_drawdown,
+      r.win_rate,
+      r.score
+    ].join(','))
+  ].join('\n')
+
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `optimization_results_${Date.now()}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+
+  ElMessage.success('导出成功')
+}
 </script>
 
 <style scoped>
@@ -511,6 +598,23 @@ onMounted(() => {
 
 .best-params {
   margin-bottom: 16px;
+}
+
+.optimize-progress {
+  margin-bottom: 16px;
+}
+
+.progress-info {
+  text-align: center;
+  margin-top: 8px;
+  color: #6b7280;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .empty-result {
