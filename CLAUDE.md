@@ -6,6 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AI Quant Platform - A quantitative backtesting platform supporting A-share (akshare) and crypto (ccxt) markets.
 
+## Principles
+- 当进行代码需求设计、实现、编写时，使用`/superpowers:*`中的技能来开始.
+
 ## Development Commands
 
 ### Backend (Python 3.11+)

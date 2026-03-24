@@ -1,13 +1,18 @@
 <template>
   <div class="metric-card">
-    <div class="metric-label">{{ label }}</div>
+    <div class="metric-label">
+      {{ label }}
+    </div>
     <div
       class="metric-value"
       :class="[trendClass]"
     >
       {{ value }}
     </div>
-    <div v-if="description" class="metric-description">
+    <div
+      v-if="description"
+      class="metric-description"
+    >
       {{ description }}
     </div>
   </div>

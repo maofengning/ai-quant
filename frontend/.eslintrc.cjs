@@ -18,6 +18,11 @@ module.exports = {
   },
   plugins: ['vue', '@typescript-eslint'],
   rules: {
-    // Add custom rules here if needed
+    // Allow single word component names for common UI patterns
+    'vue/multi-word-component-names': ['error', {
+      ignores: ['Dashboard', 'Optimizer', 'Header', 'Sidebar', 'AppLayout']
+    }],
+    // Allow any type in tests
+    '@typescript-eslint/no-explicit-any': 'off',
   },
 }

@@ -1,20 +1,22 @@
-<script setup lang="ts">
-// AI Quant Platform - Root Component
-</script>
-
 <template>
-  <div id="app">
-    <h1>AI Quant Platform</h1>
-  </div>
+  <router-view />
 </template>
 
-<style scoped>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
 }
 </style>
