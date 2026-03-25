@@ -1,6 +1,6 @@
 """API request/response schemas."""
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Any
 
 
 class SymbolsResponse(BaseModel):
@@ -108,3 +108,59 @@ class BacktestResult(BaseModel):
     equity_curve: list[EquityPoint] = []
     trades: list[Trade] = []
     daily_returns: list[float] = []
+
+
+# ============== Optimization Schemas ==============
+
+class ParamSpaceConfig(BaseModel):
+    """Configuration for a single parameter in optimization space."""
+    type: Literal['int', 'float', 'categorical']
+    low: float | None = None
+    high: float | None = None
+    choices: list[str] | list[float] | list[int] | None = None
+
+
+class OptimizeRequest(BaseModel):
+    """Request for starting parameter optimization."""
+    strategy_id: str
+    symbols: list[str]
+    start_date: str
+    end_date: str
+    initial_capital: float = 100000
+    param_space: dict[str, ParamSpaceConfig]
+    objective: str = "sharpe_ratio"
+    direction: Literal['maximize', 'minimize'] = "maximize"
+    n_trials: int = 50
+    commission: float = 0.001
+    slippage: float = 0.001
+
+
+class OptimizeRunResponse(BaseModel):
+    """Response for optimization run."""
+    optimize_id: str
+    status: Literal['running', 'completed', 'failed']
+
+
+class OptimizeStatusResponse(BaseModel):
+    """Response for optimization status."""
+    optimize_id: str
+    status: Literal['running', 'completed', 'failed']
+    progress: float = 0.0
+    trials_count: int = 0
+    best_value: float | None = None
+
+
+class OptimizationTrial(BaseModel):
+    """Single optimization trial result."""
+    trial_number: int
+    value: float
+    params: dict[str, Any]
+
+
+class OptimizeResult(BaseModel):
+    """Full optimization result."""
+    optimize_id: str
+    status: Literal['running', 'completed', 'failed']
+    best_trial: OptimizationTrial | None = None
+    all_trials: list[OptimizationTrial] = []
+    total_trials: int = 0

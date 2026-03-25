@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 from fastapi import FastAPI
 from app.config import settings
-from app.api.v1 import data, strategy, backtest, dashboard
+from app.api.v1 import data, strategy, backtest, dashboard, optimize
 
 app = FastAPI(
     title=settings.app_name,
@@ -14,6 +14,7 @@ app.include_router(data.router, prefix="/api/v1")
 app.include_router(strategy.router, prefix="/api/v1")
 app.include_router(backtest.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(optimize.router, prefix="/api/v1")
 
 
 @app.get("/")
