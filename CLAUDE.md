@@ -8,33 +8,43 @@ AI Quant Platform - A quantitative backtesting platform supporting A-share (aksh
 
 ## Principles
 - 当进行代码需求设计、实现、编写时，使用`/superpowers:*`中的技能来开始.
+- **Backend must use `uv` for dependency management and virtual environment**
+- **Always use project-local virtual environment (`.venv`) in backend directory**
 
 ## Development Commands
 
 ### Backend (Python 3.11+)
+**IMPORTANT: Backend uses `uv` for package management with project-local virtual environment.**
+
 ```bash
 cd backend
 
-# Install dependencies
-pip install -e ".[dev]"
+# Install dependencies (creates .venv in project)
+uv sync
 
 # Run development server
-uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --port 8000
 
 # Run all tests
-pytest
+uv run pytest
 
 # Run specific test file
-pytest tests/unit/test_engine.py
+uv run pytest tests/unit/test_engine.py
 
 # Run specific test with verbose
-pytest tests/unit/test_engine.py::TestBacktestEngine -v
+uv run pytest tests/unit/test_engine.py::TestBacktestEngine -v
 
 # Run with coverage
-pytest --cov=app --cov-report=html
+uv run pytest --cov=app --cov-report=html
 
 # Lint
-ruff check .
+uv run ruff check .
+
+# Add new dependency
+uv add <package-name>
+
+# Add dev dependency
+uv add --dev <package-name>
 ```
 
 ### Frontend (Vue 3 + TypeScript)
